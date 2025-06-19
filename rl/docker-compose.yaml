@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  rl_model:
+    image: rl_model:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5004:5004"
+    volumes:
+      # 1) persist model checkpoints
+      - ./checkpoints:/app/checkpoints
+      # 2) mount src, so edits show up immediately
+      - ./src:/workspace
+    # 3) use --reload for hot-reload on code changes
+    command: uvicorn rl_server:app --reload --port 5004 --host 0.0.0.0
+  rl_train:
+    build: .
+    environment:
+      - DISPLAY=${DISPLAY:-:0}  # Use host's DISPLAY variable or default to :0
+      - XDG_RUNTIME_DIR=/tmp/runtime
+    volumes:
+      - ./checkpoints:/app/checkpoints
+      - ./src:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /tmp/runtime:/tmp/runtime
+    network_mode: host  # Use host network for X11 forwarding
+    command: python train.py
+  ppo_train:
+    build: .
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - XDG_RUNTIME_DIR=/tmp/runtime
+    volumes:
+      - ./checkpoints:/app/checkpoints
+      - ./src:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /tmp/runtime:/tmp/runtime
+    network_mode: host  # Use host network for X11 forwarding
+    command: python run_ppo.py
